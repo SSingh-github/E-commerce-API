@@ -31,7 +31,6 @@ def signup():
     db.session.add(new_user)
     db.session.commit()
 
-    # Create JWT token
     secret_key = os.getenv('SECRET_KEY')
     token = jwt.encode(
         {"id": new_user.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
@@ -41,7 +40,6 @@ def signup():
 
     return jsonify({"message": "Customer created successfully", "token": token}), 201
 
-#eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwiZXhwIjoxNzM3NzExODY0fQ.HsrAACsH0mLQsdjoxDD4BaZ0gmqRwxecqT4jVgSKOQI
 
 
 
@@ -49,19 +47,15 @@ def signup():
 def merchant_signup():
     data = request.get_json()
 
-    # Ensure all required fields are provided
     if not all(field in data for field in ['name', 'email', 'business_name', 'password']):
         return jsonify({"message": "Missing required fields"}), 400
 
-    # Check if the email is already taken
     existing_merchant = Merchant.query.filter_by(email=data['email']).first()
     if existing_merchant:
         return jsonify({"message": "Email is already registered"}), 400
 
-    # Hash the password for storage
     hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
 
-    # Create a new Merchant object
     new_merchant = Merchant(
         name=data['name'],
         email=data['email'],
@@ -69,13 +63,11 @@ def merchant_signup():
         password=hashed_password
     )
 
-    # Add the merchant to the database
     db.session.add(new_merchant)
     db.session.commit()
     
     secret_key = os.getenv('SECRET_KEY')
 
-    # Create JWT token
     token = jwt.encode({
         'id': new_merchant.id,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
