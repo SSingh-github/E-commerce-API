@@ -4,5 +4,3 @@
 # login both the types of users
 # logout both types
 # delete account 
-# update account
-# reset password

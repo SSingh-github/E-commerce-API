@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from .model import Customer, Merchant
+from .utils import customer_required, merchant_required
 from . import db
 import jwt
 import datetime
@@ -33,7 +34,7 @@ def signup():
 
     secret_key = os.getenv('SECRET_KEY')
     token = jwt.encode(
-        {"id": new_user.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+        {"id": new_user.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24), "user_type": "customer"},
         str(secret_key),
         algorithm="HS256"
     )
@@ -71,7 +72,7 @@ def merchant_signup():
     token = jwt.encode({
         'id': new_merchant.id,
         'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-    }, str(secret_key), algorithm='HS256')
+    , "user_type": "merchant"}, str(secret_key), algorithm='HS256')
 
     return jsonify({
         'message': 'Merchant registered successfully',
@@ -95,7 +96,7 @@ def customer_login():
 
     secret_key = os.getenv('SECRET_KEY')
     token = jwt.encode(
-        {"id": customer.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+        {"id": customer.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),"user_type": "customer"},
         str(secret_key),
         algorithm="HS256"
     )
@@ -119,9 +120,37 @@ def merchant_login():
 
     secret_key = os.getenv('SECRET_KEY')
     token = jwt.encode(
-        {"id": merchant.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+        {"id": merchant.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24), "user_type": "merchant"},
         str(secret_key),
         algorithm="HS256"
     )
 
     return jsonify({"message": "Login successful", "token": token}), 200
+
+
+@auth_blueprint.route('/customer/delete', methods=['DELETE'])
+@customer_required
+def delete_customer_account():
+    customer = Customer.query.get(g.user_id)
+
+    if not customer:
+        return jsonify({"message": "Customer not found"}), 404
+
+    db.session.delete(customer)
+    db.session.commit()
+
+    return jsonify({"message": "Customer account deleted successfully"}), 200
+
+
+@auth_blueprint.route('/merchant/delete', methods=['DELETE'])
+@merchant_required
+def delete_merchant_account():
+    merchant = Merchant.query.get(g.user_id)
+
+    if not merchant:
+        return jsonify({"message": "Merchant not found"}), 404
+
+    db.session.delete(merchant)
+    db.session.commit()
+
+    return jsonify({"message": "Merchant account deleted successfully"}), 200
