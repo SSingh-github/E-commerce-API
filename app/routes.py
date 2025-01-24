@@ -77,3 +77,51 @@ def merchant_signup():
         'message': 'Merchant registered successfully',
         'token': token
     }), 201
+
+
+@auth_blueprint.route('/customer/login', methods=['POST'])
+def customer_login():
+    data = request.get_json()
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
+
+    customer = Customer.query.filter_by(email=email).first()
+    if not customer or not check_password_hash(customer.password, password):
+        return jsonify({"message": "Invalid email or password"}), 401
+
+    secret_key = os.getenv('SECRET_KEY')
+    token = jwt.encode(
+        {"id": customer.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+        str(secret_key),
+        algorithm="HS256"
+    )
+
+    return jsonify({"message": "Login successful", "token": token}), 200
+
+
+@auth_blueprint.route('/merchant/login', methods=['POST'])
+def merchant_login():
+    data = request.get_json()
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not all([email, password]):
+        return jsonify({"message": "Email and password are required"}), 400
+
+    merchant = Merchant.query.filter_by(email=email).first()
+    if not merchant or not check_password_hash(merchant.password, password):
+        return jsonify({"message": "Invalid email or password"}), 401
+
+    secret_key = os.getenv('SECRET_KEY')
+    token = jwt.encode(
+        {"id": merchant.id, "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24)},
+        str(secret_key),
+        algorithm="HS256"
+    )
+
+    return jsonify({"message": "Login successful", "token": token}), 200
