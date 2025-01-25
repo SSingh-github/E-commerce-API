@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, g
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from .model import Customer, Merchant
+from .model import Customer, Merchant, Product
 from .utils import customer_required, merchant_required
 from . import db
 import jwt
@@ -11,6 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 auth_blueprint = Blueprint('auth', __name__)
+ASSETS_FOLDER = 'assets'
+os.makedirs(ASSETS_FOLDER, exist_ok=True)
 
 @auth_blueprint.route('/customer/signup', methods=['POST'])
 def signup():
@@ -154,3 +157,118 @@ def delete_merchant_account():
     db.session.commit()
 
     return jsonify({"message": "Merchant account deleted successfully"}), 200
+
+
+
+@auth_blueprint.route('/merchant/add_product', methods=['POST'])
+@merchant_required
+def add_product():
+    data = request.form
+    file = request.files.get('image')
+
+    name = data.get('name')
+    description = data.get('description')
+    quantity = data.get('quantity')
+
+    if not all([name, description, quantity, file]):
+        return jsonify({"message": "All fields are required, including an image."}), 400
+
+    try:
+        quantity = int(quantity)
+    except ValueError:
+        return jsonify({"message": "Quantity must be an integer."}), 400
+
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(ASSETS_FOLDER, filename)
+    file.save(file_path)
+
+    product = Product(
+        name=name,
+        description=description,
+        quantity=quantity,
+        image=file_path,
+        merchant_id=g.user_id
+    )
+    db.session.add(product)
+    db.session.commit()
+
+    return jsonify({"message": "Product added successfully", "product": {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "quantity": product.quantity,
+        "image": product.image
+    }}), 201
+
+
+
+@auth_blueprint.route('/merchant/list_products', methods=['GET'])
+@merchant_required
+def get_products():
+    merchant_id = g.user_id
+    products = Product.query.filter_by(merchant_id=merchant_id).all()
+
+    product_list = [{
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "quantity": product.quantity,
+        "image": product.image
+    } for product in products]
+
+    return jsonify({"products": product_list}), 200
+
+
+
+@auth_blueprint.route('/merchant/update_product/<int:id>', methods=['PUT'])
+@merchant_required
+def update_product(id):
+    data = request.form
+    file = request.files.get('image')
+
+    product = Product.query.filter_by(id=id, merchant_id=g.user_id).first()
+    if not product:
+        return jsonify({"message": "Product not found or you do not have permission to edit it."}), 404
+
+    name = data.get('name')
+    description = data.get('description')
+    quantity = data.get('quantity')
+
+    if name:
+        product.name = name
+    if description:
+        product.description = description
+    if quantity:
+        try:
+            product.quantity = int(quantity)
+        except ValueError:
+            return jsonify({"message": "Quantity must be an integer."}), 400
+    if file:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(ASSETS_FOLDER, filename)
+        file.save(file_path)
+        product.image = file_path
+
+    db.session.commit()
+
+    return jsonify({"message": "Product updated successfully", "product": {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "quantity": product.quantity,
+        "image": product.image
+    }}), 200
+
+
+
+@auth_blueprint.route('/merchant/delete_product/<int:id>', methods=['DELETE'])
+@merchant_required
+def delete_product(id):
+    product = Product.query.filter_by(id=id, merchant_id=g.user_id).first()
+    if not product:
+        return jsonify({"message": "Product not found or you do not have permission to delete it."}), 404
+
+    db.session.delete(product)
+    db.session.commit()
+
+    return jsonify({"message": "Product deleted successfully"}), 200
