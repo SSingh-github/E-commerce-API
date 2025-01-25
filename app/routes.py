@@ -169,14 +169,20 @@ def add_product():
     name = data.get('name')
     description = data.get('description')
     quantity = data.get('quantity')
+    price = data.get('price')
 
-    if not all([name, description, quantity, file]):
+    if not all([name, description, quantity, file, price]):
         return jsonify({"message": "All fields are required, including an image."}), 400
 
     try:
         quantity = int(quantity)
     except ValueError:
         return jsonify({"message": "Quantity must be an integer."}), 400
+    
+    try:
+        price = int(price)
+    except ValueError:
+        return jsonify({"message": "Price must be an integer."}), 400
 
     filename = secure_filename(file.filename)
     file_path = os.path.join(ASSETS_FOLDER, filename)
@@ -187,7 +193,8 @@ def add_product():
         description=description,
         quantity=quantity,
         image=file_path,
-        merchant_id=g.user_id
+        merchant_id=g.user_id,
+        price=price
     )
     db.session.add(product)
     db.session.commit()
@@ -197,7 +204,8 @@ def add_product():
         "name": product.name,
         "description": product.description,
         "quantity": product.quantity,
-        "image": product.image
+        "image": product.image,
+        "price":price
     }}), 201
 
 
@@ -213,7 +221,8 @@ def get_products():
         "name": product.name,
         "description": product.description,
         "quantity": product.quantity,
-        "image": product.image
+        "image": product.image,
+        "price":product.price
     } for product in products]
 
     return jsonify({"products": product_list}), 200
@@ -233,6 +242,7 @@ def update_product(id):
     name = data.get('name')
     description = data.get('description')
     quantity = data.get('quantity')
+    price = data.get('price')
 
     if name:
         product.name = name
@@ -243,6 +253,11 @@ def update_product(id):
             product.quantity = int(quantity)
         except ValueError:
             return jsonify({"message": "Quantity must be an integer."}), 400
+    if price:
+        try:
+            product.price = int(price)
+        except ValueError:
+            return jsonify({"message": "Price must be an integer."}), 400
     if file:
         filename = secure_filename(file.filename)
         file_path = os.path.join(ASSETS_FOLDER, filename)
@@ -256,7 +271,8 @@ def update_product(id):
         "name": product.name,
         "description": product.description,
         "quantity": product.quantity,
-        "image": product.image
+        "image": product.image,
+        "price": product.price
     }}), 200
 
 
@@ -272,3 +288,14 @@ def delete_product(id):
     db.session.commit()
 
     return jsonify({"message": "Product deleted successfully"}), 200
+
+
+@auth_blueprint.route('/customer/list_products', methods=['GET'])
+@customer_required
+def fetch_products():
+    """
+    fetch all the products in the product table
+    """
+    pass
+
+

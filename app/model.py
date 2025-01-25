@@ -24,12 +24,13 @@ class Merchant(db.Model):
         return f"<Merchant {self.name}>"
 
 class Product(db.Model):
-    __tablename__ = 'products'
+    __tablename__ = 'Product'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     image = db.Column(db.String(300), nullable=True) 
     quantity = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Integer, nullable=False)
     merchant_id = db.Column(db.Integer, db.ForeignKey('merchants.id'), nullable=False)
     description = db.Column(db.Text, nullable=True)
 
