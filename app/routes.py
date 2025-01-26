@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, g
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from .model import Customer, Merchant, Product
+from .model import Customer, Merchant, Product, Cart
 from .utils import customer_required, merchant_required
 from . import db
 import jwt
@@ -290,12 +290,124 @@ def delete_product(id):
     return jsonify({"message": "Product deleted successfully"}), 200
 
 
+
 @auth_blueprint.route('/customer/list_products', methods=['GET'])
 @customer_required
 def fetch_products():
     """
     fetch all the products in the product table
     """
-    pass
+    products = Product.query.all()
+    result = [{
+        "id": product.id,
+        "name": product.name,
+        "image": product.image,
+        "quantity": product.quantity,
+        "price": product.price,
+        "description": product.description
+    } for product in products]
+    return jsonify(result), 200
 
+@auth_blueprint.route('/customer/add_to_cart', methods=['POST'])
+@customer_required
+def add_product_to_cart():
+    data = request.get_json()
+    product_id = data.get('product_id')
+    quantity = data.get('quantity', 1)
+
+    if not product_id:
+        return jsonify({"message": "Product ID is required"}), 400
+
+    cart = Cart.query.filter_by(customer_id=g.user_id).first()
+    if not cart:
+        cart = Cart(customer_id=g.user_id, product_ids='', total_price=0)
+        db.session.add(cart)
+
+    if cart.product_ids and str(product_id) in cart.product_ids.split(','):
+        return jsonify({"message": "Product already in cart"}), 400
+
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({"message": "Product not found"}), 404
+
+    if cart.product_ids:
+        cart.product_ids += f",{product_id}:{quantity}"
+    else:
+        cart.product_ids = f"{product_id}:{quantity}"
+
+    cart.total_price += product.price * quantity
+    db.session.commit()
+
+    return jsonify({"message": "Product added to cart", "cart": {
+        "id": cart.id,
+        "product_ids": cart.product_ids,
+        "total_price": cart.total_price
+    }}), 200
+
+
+@auth_blueprint.route('/customer/list_cart_products', methods=['GET'])
+@customer_required
+def fetch_cart():
+    cart = Cart.query.filter_by(customer_id=g.user_id).first()
+    if not cart:
+        return jsonify({"message": "Cart not found"}), 404
+
+    product_details = []
+    for item in cart.product_ids.split(','):
+        parts_of_item = item.split(':')
+        if len(parts_of_item) > 1:
+            product_id = parts_of_item[0]
+            quantity = parts_of_item[1]
+            product = Product.query.get(product_id)
+            if product:
+                product_details.append({
+                    "id": product.id,
+                    "name": product.name,
+                    "image": product.image,
+                    "quantity": int(quantity),
+                    "price": product.price,
+                    "description": product.description
+                })
+
+    return jsonify({
+        "cart": {
+            "id": cart.id,
+            "product_ids": cart.product_ids,
+            "total_price": cart.total_price,
+            "products": product_details
+        }
+    }), 200
+
+
+@auth_blueprint.route('/customer/delete_product_cart/<int:product_id>', methods=['DELETE'])
+@customer_required
+def delete_cart_product(product_id):
+    cart = Cart.query.filter_by(customer_id=g.user_id).first()
+    if not cart:
+        return jsonify({"message": "Cart not found"}), 404
+
+    product_to_remove = None
+    product_price = 0
+    product_ids = cart.product_ids.split(',')
+    updated_product_ids = []
+    for item in product_ids:
+        pid, quantity = item.split(':')
+        if int(pid) == product_id:
+            product_to_remove = item
+            product_price = Product.query.get(pid).price
+        else:
+            updated_product_ids.append(item)
+
+    if not product_to_remove:
+        return jsonify({"message": "Product not found in cart"}), 404
+
+    cart.product_ids = ','.join(updated_product_ids)
+    cart.total_price -= product_price * int(quantity)
+    db.session.commit()
+
+    return jsonify({"message": "Product removed from cart", "cart": {
+        "id": cart.id,
+        "product_ids": cart.product_ids,
+        "total_price": cart.total_price
+    }}), 200
 

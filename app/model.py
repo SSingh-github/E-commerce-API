@@ -38,3 +38,17 @@ class Product(db.Model):
 
     def __repr__(self):
         return f"<Product {self.name}>"
+    
+
+class Cart(db.Model):
+    __tablename__ = 'carts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    product_ids = db.Column(db.String(500), nullable=True) 
+    total_price = db.Column(db.Integer, nullable=False, default=0)
+
+    customer = db.relationship('Customer', backref=db.backref('carts', lazy=True))
+
+    def __repr__(self):
+        return f"<Cart id={self.id} customer_id={self.customer_id} total_price={self.total_price} product_ids={self.product_ids}>"
