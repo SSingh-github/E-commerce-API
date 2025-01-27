@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, redirect, render_template
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from .model import Customer, Merchant, Product, Cart
@@ -8,6 +8,9 @@ import jwt
 import datetime
 import os
 from dotenv import load_dotenv
+import stripe
+
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 load_dotenv()
 
@@ -411,3 +414,92 @@ def delete_cart_product(product_id):
         "total_price": cart.total_price
     }}), 200
 
+
+@auth_blueprint.route('/create-checkout-session', methods=['POST'])
+@customer_required
+def create_checkout_session():
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        quantity = data.get('quantity')
+        checkout_cart = data.get('checkout_whole_cart')
+
+        line_items = []
+
+        if checkout_cart:
+            cart = Cart.query.filter_by(customer_id=g.user_id).first()
+            if not cart:
+                return jsonify({"error": "Cart not found"}), 404
+
+            for item in cart.product_ids.split(','):
+                parts_of_item = item.split(':')
+                if len(parts_of_item) > 1:
+                    product_id = parts_of_item[0]
+                    quantity = int(parts_of_item[1])
+                    product = Product.query.get(product_id)
+                    if not product:
+                        return jsonify({"error": f"Product with ID {product_id} not found"}), 404
+                    if product.quantity < quantity:
+                        return jsonify({"error": f"Not enough stock for product {product.name}"}), 400
+
+                    line_items.append({
+                        'price_data': {
+                            'currency': 'usd',
+                            'product_data': {
+                                'name': product.name,
+                                #'images': [product.image] if product.image else [],
+                            },
+                            'unit_amount': int(product.price * 100),
+                        },
+                        'quantity': quantity,
+                    })
+        else:
+            if not product_id or not quantity:
+                return jsonify({"error": "Product ID and quantity are required"}), 400
+
+            product = Product.query.get(product_id)
+            if not product:
+                return jsonify({"error": f"Product with ID {product_id} not found"}), 404
+            if product.quantity < quantity:
+                return jsonify({"error": f"Not enough stock for product {product.name}"}), 400
+
+            line_items.append({
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': product.name,
+                        #'images': [product.image] if product.image else [],
+                    },
+                    'unit_amount': int(product.price * 100),
+                },
+                'quantity': quantity,
+            })
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='payment',
+            success_url='https://2156-38-183-44-137.ngrok-free.app/success',
+            cancel_url='https://2156-38-183-44-137.ngrok-free.app/cancel',
+        )
+
+        return jsonify({"url": checkout_session.url}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+# Route for Success URL
+@auth_blueprint.route('/success')
+def success():
+    return render_template('success.html')
+
+# Route for Cancel URL
+@auth_blueprint.route('/cancel')
+def cancel():
+    return render_template('cancel.html')
+
+    # implement webhooks
+    # in the success case, we will first get the user id, then we will check the product ids which the user purchased and in
+    # what quantity. We will update the quantity of those products in the products table. We will store the payment in the
+    # payment table. We will clear the cart for that user. Because we assume that, the user can only purchase what is in its cart.
