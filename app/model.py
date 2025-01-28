@@ -1,4 +1,5 @@
 from . import db
+from datetime import datetime
 
 class Customer(db.Model):
     __tablename__ = 'customers'
@@ -52,3 +53,22 @@ class Cart(db.Model):
 
     def __repr__(self):
         return f"<Cart id={self.id} customer_id={self.customer_id} total_price={self.total_price} product_ids={self.product_ids}>"
+
+
+class Payment(db.Model):
+    __tablename__ = 'payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
+    session_id = db.Column(db.String(255), unique=True, nullable=False)
+    amount_paid = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __init__(self, customer_id, session_id, amount_paid, currency, status):
+        self.customer_id = customer_id
+        self.session_id = session_id
+        self.amount_paid = amount_paid
+        self.currency = currency
+        self.status = status
