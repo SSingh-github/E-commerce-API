@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, g, redirect, render_template
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from .model import Customer, Merchant, Product, Cart
+from .model import Customer, Merchant, Product, Cart, Payment
 from .utils import customer_required, merchant_required
 from . import db
 import jwt
@@ -479,12 +479,12 @@ def create_checkout_session():
             payment_method_types=['card'],
             line_items=line_items,
             mode='payment',
-            success_url='https://2156-38-183-44-137.ngrok-free.app/success',
-            cancel_url='https://2156-38-183-44-137.ngrok-free.app/cancel',
+            success_url='https://017a-38-183-44-137.ngrok-free.app/success',
+            cancel_url='https://017a-38-183-44-137.ngrok-free.app/cancel',
             metadata={
                 'customer_id': g.user_id  
-        }
-)
+            }
+        )
 
 
         return jsonify({"url": checkout_session.url}), 200
@@ -525,9 +525,44 @@ def stripe_webhook():
 
     # Handle the event
     if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']  # contains a stripe checkout session
+        session = event['data']['object']  # Stripe session object
+
+        # Retrieve the customer ID from metadata
+        customer_id = session['metadata']['customer_id']
+
+        # Proceed with database updates using customer_id
+        cart = Cart.query.filter_by(customer_id=customer_id).first()
+        if cart:
+            for item in cart.product_ids.split(','):
+                parts_of_item = item.split(':')
+                if len(parts_of_item) > 1:
+                    product_id = parts_of_item[0]
+                    quantity = int(parts_of_item[1])
+
+                    # Update product quantities
+                    product = Product.query.get(product_id)
+                    if product:
+                        product.quantity -= quantity
+                        db.session.add(product)
+
+            # Clear the cart
+            cart.product_ids = ""
+            cart.total_price = 0
+            db.session.add(cart)
+
+        # Save payment details
+        payment = Payment(
+            customer_id=customer_id,
+            session_id=session['id'],
+            amount_paid=session['amount_total'] / 100,
+            currency=session['currency'],
+            status=session['payment_status']
+        )
+        db.session.add(payment)
+
+        db.session.commit()
         print(f"Payment was successful for session {session['id']}")
-        print("################################\n#########################\n##################")
+
 
         # Do something with the session (like updating the order status)
     elif event and event['type'] == 'payment_intent.succeeded':
