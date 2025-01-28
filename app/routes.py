@@ -500,10 +500,6 @@ def success():
 def cancel():
     return render_template('cancel.html')
 
-    # implement webhooks
-    # in the success case, we will first get the user id, then we will check the product ids which the user purchased and in
-    # what quantity. We will update the quantity of those products in the products table. We will store the payment in the
-    # payment table. We will clear the cart for that user. Because we assume that, the user can only purchase what is in its cart.
 
 endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET_KEY')
 @auth_blueprint.route('/webhook', methods=['POST'])
