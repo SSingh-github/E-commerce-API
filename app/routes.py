@@ -481,7 +481,11 @@ def create_checkout_session():
             mode='payment',
             success_url='https://2156-38-183-44-137.ngrok-free.app/success',
             cancel_url='https://2156-38-183-44-137.ngrok-free.app/cancel',
-        )
+            metadata={
+                'customer_id': g.user_id  
+        }
+)
+
 
         return jsonify({"url": checkout_session.url}), 200
 
