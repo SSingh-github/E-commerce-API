@@ -1,69 +1,60 @@
-# E-Commerce Platform
+# Simple E-commerce API
 
-An e-commerce application that supports two types of users: **Merchants** and **Customers**, with Stripe integration for payment processing.
+![Badge](https://img.shields.io/badge/python-3.8%2B-blue)
+![Badge](https://img.shields.io/badge/flask-2.0%2B-green)
+![Badge](https://img.shields.io/badge/mysql-database-orange)
+![Badge](https://img.shields.io/badge/stripe-payment%20gateway-purple)
 
----
-
-## Features Overview
-
-### **Authentication Module**
-- **Authentication using JWT** for secure sessions.
-- **Sign up**:
-  - Supports both **Merchants** and **Customers**.
-- **Login**:
-  - Separate login for both user types.
-- **Logout**:
-  - Secure logout for both user types.
-- **Account Management**:
-  - Users can delete their accounts.
+A Flask-based e-commerce API that handles user authentication, product management, shopping cart functionality, and payment gateway integration using Stripe. This project demonstrates complex backend logic, including JWT authentication, database interactions, and external service integration.
 
 ---
 
-### **Merchant Module**
-- Merchants can:
-  - **Create products**.
-  - **Fetch products** they have created.
-  - Perform **CRUD operations** on their products.
+## About the Project
+
+### Problem Solved
+Building a scalable and secure e-commerce platform requires handling multiple responsibilities, such as user authentication, product management, shopping cart logic, and payment processing. This project solves these challenges by:
+1. **User Authentication**: Using JWT (JSON Web Tokens) to securely manage user sessions.
+2. **Product Management**: Allowing admins to create, update, and list products.
+3. **Shopping Cart Logic**: Enabling users to add/remove products and manage their carts.
+4. **Payment Integration**: Integrating with Stripe for seamless payment processing.
 
 ---
 
-### **Customer Module**
-- Customers can:
-  - **Fetch all products**.
-  - **View product details**.
-  - **Add products to the cart**.
-  - **Remove products from the cart**.
+## Features
+- **JWT Authentication**: Secure user login and session management.
+- **Product Management**: Create, update, and list products in the database.
+- **Shopping Cart**: Add/remove products and manage cart items.
+- **Payment Gateway**: Integrate with Stripe for secure payment processing.
+- **RESTful API**: Provides endpoints for all e-commerce functionalities.
 
 ---
 
-### **Stripe Integration**
-This project integrates Stripe for payment processing. All payments go to a **single bank account**.
-
-#### **Stripe Payment Options**
-1. **Stripe Checkout**:
-   - Ideal for simple e-commerce platforms needing quick, secure payment solutions.
-   - Minimal customization required.
-   - Stripe handles the compliance and UI.
-
-2. **Stripe Elements**:
-   - Suitable for highly customized payment experiences.
-   - Ideal for applications with complex user interfaces where the payment form must blend seamlessly.
-
-#### **Stripe Keys Used**
-- **Publishable Key**: Used on the client side for securely interacting with Stripe.
-- **Secret Key**: Used on the server side for creating payments and managing customer sessions.
-- **Webhook Secret Key**: Used for verifying webhook events sent by Stripe.
+## Technologies and Skills Used
+- **Backend Framework**: Flask (Python)
+- **Database**: MySQL (with SQLAlchemy for ORM)
+- **Authentication**: JWT (JSON Web Tokens)
+- **Payment Gateway**: Stripe (Checkout API)
+- **Other Tools**: Git, Docker (optional for containerization)
 
 ---
 
-## How Payments Work
-1. Customers can purchase products added to their cart.
-2. The application supports:
-   - **Stripe Checkout** for simple and secure payments.
-   - **Stripe Elements** for customized payment flows.
-3. Webhooks are used to handle post-payment processes:
-   - Update the database (e.g., reduce product quantities, clear cart).
-   - Store payment details securely.
+## How It Works
+1. **User Authentication**: Users register/login to receive a JWT for accessing protected endpoints.
+2. **Product Management**: Admins can create, update, and list products stored in a MySQL database.
+3. **Shopping Cart**: Users can add/remove products to/from their cart, which is stored in the database.
+4. **Payment Processing**: Users can checkout their cart, and the API integrates with Stripe to handle payments.
 
 ---
 
+## Steps to Clone and Run the Project
+
+### Prerequisites
+- Python 3.8+
+- MySQL server (locally or via Docker)
+- Stripe API key (sign up [here](https://stripe.com))
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/yourusername/simple-ecommerce-api.git
+cd simple-ecommerce-api
+```
